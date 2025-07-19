@@ -12,6 +12,8 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 import logging
 from tqdm import tqdm
+import time
+from datetime import datetime, timedelta
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -29,10 +31,34 @@ class DataParser:
         self.data_dir = os.path.expanduser(data_dir)
         self.vision_api_url = vision_api_url
         self.supported_extensions = {'.pdf', '.xlsx', '.txt', '.csv'}
+        self.progress_callback = None
+        self.pause_flag = False
         
-    def sample_files(self, num_samples: int = 5) -> List[Dict[str, Any]]:
+    def set_progress_callback(self, callback):
+        """Set callback for progress updates."""
+        self.progress_callback = callback
+        
+    def set_pause_flag(self, pause: bool):
+        """Set pause flag for processing."""
+        self.pause_flag = pause
+        
+    def _update_progress(self, current: int, total: int, stage: str, file_name: str = "", eta: str = ""):
+        """Update progress through callback."""
+        if self.progress_callback:
+            self.progress_callback({
+                'current': current,
+                'total': total,
+                'percentage': (current / total * 100) if total > 0 else 0,
+                'stage': stage,
+                'file_name': file_name,
+                'eta': eta,
+                'timestamp': datetime.now().isoformat()
+            })
+    
+    def sample_files_for_validation(self, num_samples: int = 5) -> List[Dict[str, Any]]:
         """
-        Sample files across different formats to understand the data structure.
+        Sample files for validation/testing purposes only.
+        This is used to verify parsing works correctly.
         
         Args:
             num_samples: Number of files to sample
@@ -40,7 +66,7 @@ class DataParser:
         Returns:
             List of file information dictionaries
         """
-        logger.info(f"Sampling {num_samples} files from {self.data_dir}")
+        logger.info(f"Sampling {num_samples} files for validation from {self.data_dir}")
         
         # Get all files by extension
         files_by_ext = {}
@@ -70,7 +96,7 @@ class DataParser:
                         'filename': os.path.basename(file_path)
                     })
         
-        logger.info(f"Sampled {len(sampled_files)} files")
+        logger.info(f"Sampled {len(sampled_files)} files for validation")
         return sampled_files
     
     def extract_text_from_pdf_vision(self, pdf_path: str) -> List[Dict[str, Any]]:
@@ -91,6 +117,10 @@ class DataParser:
             extracted_data = []
             
             for page_num in range(len(doc)):
+                # Check for pause
+                while self.pause_flag:
+                    time.sleep(0.1)
+                
                 # Convert page to image
                 page = doc.load_page(page_num)
                 pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))  # Higher resolution
@@ -189,6 +219,10 @@ class DataParser:
             
             # Try different parsing strategies
             for line_num, line in enumerate(lines):
+                # Check for pause
+                while self.pause_flag:
+                    time.sleep(0.1)
+                
                 line = line.strip()
                 if not line:
                     continue
@@ -270,6 +304,10 @@ class DataParser:
                 content_col = df.columns[1]
             
             for idx, row in df.iterrows():
+                # Check for pause
+                while self.pause_flag:
+                    time.sleep(0.1)
+                
                 sender = str(row[sender_col]) if sender_col else "Unknown"
                 content = str(row[content_col]) if content_col else str(row.iloc[0])
                 timestamp = str(row[time_col]) if time_col else None
@@ -330,6 +368,10 @@ class DataParser:
                 content_col = df.columns[1]
             
             for idx, row in df.iterrows():
+                # Check for pause
+                while self.pause_flag:
+                    time.sleep(0.1)
+                
                 sender = str(row[sender_col]) if sender_col else "Unknown"
                 content = str(row[content_col]) if content_col else str(row.iloc[0])
                 timestamp = str(row[time_col]) if time_col else None
@@ -352,7 +394,7 @@ class DataParser:
     
     def parse_all_files(self, chunk_size: int = 1000) -> List[Dict[str, Any]]:
         """
-        Parse all files in the data directory.
+        Parse ALL files in the data directory thoroughly.
         
         Args:
             chunk_size: Number of entries to process in each chunk
@@ -360,7 +402,7 @@ class DataParser:
         Returns:
             List of all parsed entries
         """
-        logger.info("Starting to parse all files...")
+        logger.info("Starting to parse ALL files thoroughly...")
         
         all_entries = []
         
@@ -373,10 +415,34 @@ class DataParser:
                 if ext in self.supported_extensions:
                     all_files.append((file_path, ext))
         
-        logger.info(f"Found {len(all_files)} files to parse")
+        logger.info(f"Found {len(all_files)} files to parse thoroughly")
         
-        # Parse files with progress bar
-        for file_path, ext in tqdm(all_files, desc="Parsing files"):
+        # Parse files with progress tracking
+        start_time = time.time()
+        for i, (file_path, ext) in enumerate(all_files):
+            # Check for pause
+            while self.pause_flag:
+                time.sleep(0.1)
+            
+            # Calculate ETA
+            if i > 0:
+                elapsed_time = time.time() - start_time
+                avg_time_per_file = elapsed_time / i
+                remaining_files = len(all_files) - i
+                eta_seconds = avg_time_per_file * remaining_files
+                eta = str(timedelta(seconds=int(eta_seconds)))
+            else:
+                eta = "Calculating..."
+            
+            # Update progress
+            self._update_progress(
+                current=i + 1,
+                total=len(all_files),
+                stage="Parsing files",
+                file_name=os.path.basename(file_path),
+                eta=eta
+            )
+            
             try:
                 if ext == '.pdf':
                     entries = self.extract_text_from_pdf_vision(file_path)
@@ -408,7 +474,7 @@ class DataParser:
                 logger.error(f"Error processing file {file_path}: {e}")
                 continue
         
-        logger.info(f"Finished parsing. Total entries: {len(all_entries)}")
+        logger.info(f"Finished parsing ALL files. Total entries: {len(all_entries)}")
         return all_entries
     
     def save_parsed_data(self, entries: List[Dict[str, Any]], output_path: str):
@@ -434,13 +500,13 @@ def main():
     """Test the parser with sample files."""
     parser = DataParser("~/Desktop/trainingdata/")
     
-    # Sample files first
-    sampled_files = parser.sample_files(num_samples=5)
-    print("Sampled files:")
+    # Sample files first for validation
+    sampled_files = parser.sample_files_for_validation(num_samples=5)
+    print("Sampled files for validation:")
     for file_info in sampled_files:
         print(f"  {file_info['filename']} ({file_info['extension']})")
     
-    # Parse all files
+    # Parse all files thoroughly
     entries = parser.parse_all_files()
     
     # Save parsed data

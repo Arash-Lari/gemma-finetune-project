@@ -10,6 +10,8 @@ This project fine-tunes the Gemma-3-27B-it-Abliterated model on personal chat lo
 - **Local Processing**: All processing done locally, no cloud dependencies
 - **Conversation Context**: Maintains conversation context across entries
 - **Flexible Output**: Supports both MLX and GGUF model formats
+- **Sleek Frontend**: Modern GUI with progress visualization, pause/resume, and ETA
+- **Thorough Processing**: Processes ALL files completely, no random sampling
 
 ## Project Structure
 
@@ -18,6 +20,9 @@ gemma-finetune-project/
 ├── finetune.py          # Main fine-tuning script
 ├── parse_data.py        # Data parsing and vision extraction
 ├── prepare_dataset.py   # Dataset preparation for Gemma format
+├── frontend.py          # Sleek GUI frontend
+├── config.py           # Configuration file for customization
+├── test_setup.py       # Setup verification script
 ├── requirements.txt     # Python dependencies
 ├── README.md           # This file
 └── output/             # Output directory for results
@@ -66,13 +71,26 @@ pip install mlx-lm
 
 ## Usage
 
-### Quick Start
+### GUI Frontend (Recommended)
 
-1. **Prepare your data**:
-   - Place your training data in `~/Desktop/trainingdata/`
-   - Ensure LM Studio is running with vision model loaded
+Launch the sleek frontend for the best experience:
 
-2. **Run fine-tuning**:
+```bash
+python frontend.py
+```
+
+**Frontend Features:**
+- 🎨 Modern dark theme GUI
+- 📊 Real-time progress visualization
+- ⏸️ Pause/Resume functionality
+- ⏱️ ETA calculation and display
+- 📝 Live log output
+- ⚙️ Easy configuration management
+- 🧪 Built-in setup testing
+
+### Command Line Usage
+
+**Quick Start**:
 ```bash
 python finetune.py \
     --model_path ~/models/mlabonne/gemma-3-27B-it-abliterated-GGUF/gemma-3-27B-it-abliterated.q4_k_m.gguf \
@@ -82,9 +100,7 @@ python finetune.py \
     --learning_rate 1e-5
 ```
 
-### Advanced Usage
-
-**With custom parameters**:
+**Advanced Usage**:
 ```bash
 python finetune.py \
     --model_path ~/models/mlx-community/gemma-3-27B-it-qat-4bit \
@@ -109,6 +125,33 @@ python prepare_dataset.py
 # 3. Run fine-tuning only
 python finetune.py --model_path /path/to/model --skip_data_processing
 ```
+
+## Frontend Features
+
+### Progress Visualization
+- **Overall Progress Bar**: Shows complete pipeline progress
+- **Stage Progress Bar**: Shows current stage progress
+- **Real-time Status**: Current file being processed
+- **ETA Display**: Estimated time to completion
+- **Percentage Display**: Exact completion percentage
+
+### Control Features
+- **Start Processing**: Begin the complete pipeline
+- **Pause/Resume**: Pause processing at any time
+- **Stop**: Safely stop processing
+- **Test Setup**: Verify all dependencies and paths
+
+### Configuration Management
+- **Model Path**: Set your Gemma model path
+- **Data Directory**: Set your training data location
+- **Training Parameters**: Epochs, batch size, learning rate
+- **Real-time Validation**: Check paths and settings
+
+### Log Output
+- **Live Logging**: Real-time log display
+- **Timestamped Messages**: All events with timestamps
+- **Error Highlighting**: Clear error identification
+- **Scrollable History**: View complete processing history
 
 ## Configuration
 
@@ -144,6 +187,20 @@ python finetune.py --model_path /path/to/model --skip_data_processing
 - **Pattern Matching**: Detects common chat formats (`[timestamp] sender: message`)
 - **Flexible**: Handles various text formats with fallback parsing
 - **Context**: Maintains conversation flow across lines
+
+## Processing Details
+
+### Thorough Processing
+- **Complete Coverage**: Processes ALL files in your data directory
+- **No Random Sampling**: Every file is processed completely
+- **Conversation Context**: Maintains conversation flow across entries
+- **Memory Efficient**: Processes in chunks to handle large datasets
+
+### Progress Tracking
+- **Real-time Updates**: Live progress updates through GUI
+- **ETA Calculation**: Accurate time estimates based on processing speed
+- **Stage Tracking**: Clear indication of current processing stage
+- **File-level Progress**: Shows which file is currently being processed
 
 ## Output Files
 
@@ -204,6 +261,11 @@ After fine-tuning, you can load the model in LM Studio:
 - Verify file encoding (UTF-8 recommended)
 - Review logs for specific parsing errors
 
+**Frontend Issues**:
+- Ensure tkinter is installed: `pip install tk`
+- Check Python version compatibility
+- Verify all dependencies are installed
+
 ### Debug Mode
 
 Enable verbose logging:
@@ -218,6 +280,7 @@ python -u finetune.py --model_path /path/to/model --data_dir /path/to/data 2>&1 
 - Use `--max_entries` to limit processing for testing
 - Process data in chunks (handled automatically)
 - Monitor memory usage during training
+- Use pause/resume for long processing sessions
 
 ### For Faster Training
 - Reduce `--lora_rank` (try 8 or 16)
@@ -241,6 +304,11 @@ python -u finetune.py --model_path /path/to/model --data_dir /path/to/data 2>&1 
 2. Modify vision prompt for your specific use case
 3. Adjust API parameters as needed
 
+### Frontend Customization
+1. Modify `frontend.py` for custom UI elements
+2. Add new configuration options
+3. Customize progress display format
+
 ## Contributing
 
 1. Fork the repository
@@ -260,6 +328,7 @@ For issues and questions:
 2. Review the logs in `output/finetune.log`
 3. Ensure all prerequisites are met
 4. Test with a small dataset first
+5. Use the GUI frontend for easier debugging
 
 ## Acknowledgments
 

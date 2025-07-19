@@ -4,6 +4,9 @@ import random
 from typing import List, Dict, Any
 import logging
 from tqdm import tqdm
+import time
+from datetime import datetime, timedelta
+import os
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -18,6 +21,29 @@ class DatasetPreparer:
         self.eos_token = "<eos>"
         self.start_of_turn = "<start_of_turn>"
         self.end_of_turn = "<end_of_turn>"
+        self.progress_callback = None
+        self.pause_flag = False
+        
+    def set_progress_callback(self, callback):
+        """Set callback for progress updates."""
+        self.progress_callback = callback
+        
+    def set_pause_flag(self, pause: bool):
+        """Set pause flag for processing."""
+        self.pause_flag = pause
+        
+    def _update_progress(self, current: int, total: int, stage: str, file_name: str = "", eta: str = ""):
+        """Update progress through callback."""
+        if self.progress_callback:
+            self.progress_callback({
+                'current': current,
+                'total': total,
+                'percentage': (current / total * 100) if total > 0 else 0,
+                'stage': stage,
+                'file_name': file_name,
+                'eta': eta,
+                'timestamp': datetime.now().isoformat()
+            })
         
     def create_instruction_prompt(self, entry: Dict[str, Any], context_entries: List[Dict[str, Any]] = None) -> str:
         """
@@ -94,7 +120,7 @@ class DatasetPreparer:
             max_entries: Maximum number of entries to process (None for all)
             conversation_window: Number of previous entries to use as context
         """
-        logger.info(f"Preparing training data from {len(parsed_data)} entries")
+        logger.info(f"Preparing training data from {len(parsed_data)} entries thoroughly")
         
         if max_entries:
             parsed_data = parsed_data[:max_entries]
@@ -109,12 +135,42 @@ class DatasetPreparer:
                 entries_by_file[source_file] = []
             entries_by_file[source_file].append(entry)
         
-        # Process each file's entries
-        for source_file, entries in tqdm(entries_by_file.items(), desc="Processing files"):
+        # Process each file's entries with progress tracking
+        start_time = time.time()
+        total_files = len(entries_by_file)
+        
+        for file_idx, (source_file, entries) in enumerate(entries_by_file.items()):
+            # Check for pause
+            while self.pause_flag:
+                time.sleep(0.1)
+            
+            # Calculate ETA
+            if file_idx > 0:
+                elapsed_time = time.time() - start_time
+                avg_time_per_file = elapsed_time / file_idx
+                remaining_files = total_files - file_idx
+                eta_seconds = avg_time_per_file * remaining_files
+                eta = str(timedelta(seconds=int(eta_seconds)))
+            else:
+                eta = "Calculating..."
+            
+            # Update progress
+            self._update_progress(
+                current=file_idx + 1,
+                total=total_files,
+                stage="Preparing dataset",
+                file_name=os.path.basename(source_file),
+                eta=eta
+            )
+            
             # Sort entries by line/row number if available
             entries.sort(key=lambda x: x.get('line_number', x.get('row_number', 0)))
             
             for i, entry in enumerate(entries):
+                # Check for pause
+                while self.pause_flag:
+                    time.sleep(0.1)
+                
                 # Get context from previous entries in the same file
                 context_entries = []
                 if i > 0:
