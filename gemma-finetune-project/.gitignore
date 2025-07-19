@@ -76,5 +76,6 @@ merged_model/
 
 # Logs
 logs/
-*.log ../.DS_Store
+*.log 
+../.DS_Store
 ../FinetuningProject.code-workspace
